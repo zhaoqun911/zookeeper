@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Map.Entry;
 
+import org.apache.yetus.audience.InterfaceAudience;
 import org.apache.zookeeper.common.StringUtils;
 import org.apache.zookeeper.common.ZKConfig;
 import org.slf4j.Logger;
@@ -53,7 +54,7 @@ import org.apache.zookeeper.server.quorum.flexible.QuorumMaj;
 import org.apache.zookeeper.server.quorum.flexible.QuorumVerifier;
 import org.apache.zookeeper.server.util.VerifyingFileFactory;
 
-
+@InterfaceAudience.Public
 public class QuorumPeerConfig {
     private static final Logger LOG = LoggerFactory.getLogger(QuorumPeerConfig.class);
     private static final int UNSET_SERVERID = -1;
@@ -363,8 +364,9 @@ public class QuorumPeerConfig {
         // static configuration params see writeDynamicConfig()
         if (dynamicConfigFileStr == null) {
             setupQuorumPeerConfig(zkProp, true);
-            if (isDistributed()) {
+            if (isDistributed() && isReconfigEnabled()) {
                 // we don't backup static config for standalone mode.
+                // we also don't backup if reconfig feature is disabled.
                 backupOldConfig();
             }
         }
@@ -514,7 +516,8 @@ public class QuorumPeerConfig {
     }
 
 
-    public static void deleteFile(String filename){        
+    public static void deleteFile(String filename){
+       if (filename == null) return;
        File f = new File(filename);
        if (f.exists()) {
            try{ 

@@ -1432,6 +1432,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
 
     public String getNextDynamicConfigFilename() {
+        if (configFilename == null) {
+            LOG.warn("configFilename is null! This should only happen in tests.");
+            return null;
+        }
         return configFilename + QuorumPeerConfig.nextDynamicConfigFileSuffix;
     }
     
@@ -1452,8 +1456,10 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
             connectNewPeers();
             if (writeToDisk) {
                 try {
-                    QuorumPeerConfig.writeDynamicConfig(
-                            getNextDynamicConfigFilename(), qv, true);
+                    String fileName = getNextDynamicConfigFilename();
+                    if (fileName != null) {
+                        QuorumPeerConfig.writeDynamicConfig(fileName, qv, true);
+                    }
                 } catch (IOException e) {
                     LOG.error("Error writing next dynamic config file to disk: ", e.getMessage());
                 }
@@ -1742,10 +1748,15 @@ public class QuorumPeer extends ZooKeeperThread implements QuorumStats.Provider 
     }
    
     public boolean processReconfig(QuorumVerifier qv, Long suggestedLeaderId, Long zxid, boolean restartLE) {
+       if (!QuorumPeerConfig.isReconfigEnabled()) {
+           LOG.debug("Reconfig feature is disabled, skip reconfig processing.");
+           return false;
+       }
+
        InetSocketAddress oldClientAddr = getClientAddress();
 
        // update last committed quorum verifier, write the new config to disk
-       // and restart leader election if config changed
+       // and restart leader election if config changed.
        QuorumVerifier prevQV = setQuorumVerifier(qv, true);
 
        // There is no log record for the initial config, thus after syncing
